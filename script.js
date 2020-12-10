@@ -186,9 +186,15 @@ const getColors = () => {
     
     for (let i = 0; i < waveEquation.u.length; i++) {
         for (let j = 0; j < waveEquation.u[0].length; j++) {
-            let colorValue = Math.abs(waveEquation.u[i][j]) / 20;
+
+            let colorValue = Math.abs(waveEquation.u[i][j]) / 10;
+
+            let r = (33 - 222) / 255;
+            let g = (118 - 84) / 255;
+            let b = (174 - 30) / 255;
+
             colors.push(
-                new THREE.Color(colorValue, (1 - colorValue)/2 , 0)
+                new THREE.Color(33 / 255 - r * colorValue , 118 / 255 - g * colorValue, 174 / 255 - b * colorValue)
             )
         }
     }
