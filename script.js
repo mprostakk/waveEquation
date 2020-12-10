@@ -107,17 +107,27 @@ class WaveEquation {
             if(this.k === 0) {
                 for(let j = 1; j < this.My; j++) {
                     for(let i = 1; i < this.Mx; i++) {
-                        this.u[i][j] = 0.5 * (this.rx * (this.u_1[i-1][j] + this.u_1[i+1][j])) +
-                            0.5*(this.ry*(this.u_1[i][j-1] + this.u_1[i][j+1])) +
-                            this.rxy1 * this.u[i][j] + this.dt * this.ut[i][j];
+
+                        // this.u[i][j] = 0.5 * (this.rx * (this.u_1[i-1][j] + this.u_1[i+1][j])) +
+                        //     0.5*(this.ry*(this.u_1[i][j-1] + this.u_1[i][j+1])) +
+                        //     this.rxy1 * this.u[i][j] + this.dt * this.ut[i][j];
+
+                        this.u[i][j] = 0.5 * this.rx * (this.u_1[i-1][j] + this.u_1[i+1][j]) + (1 - this.rx - this.ry) * this.u[i][j] +
+                            0.5 * this.ry * (this.u_1[i][j-1] + this.u_1[i][j+1]) + this.dt * this.ut[i][j];
                     }
                 }
             } else {
                 for(let j = 1; j < this.My; j++) {
                     for(let i = 1; i < this.Mx; i++) {
+
+                        // this.u[i][j] = this.rx * (this.u_1[i-1][j] + this.u_1[i+1][j]) +
+                        //     this.ry*(this.u_1[i][j-1] + this.u_1[i][j+1]) +
+                        //     this.rxy2 * this.u[i][j] - this.u_2[i][j];
+
                         this.u[i][j] = this.rx * (this.u_1[i-1][j] + this.u_1[i+1][j]) +
-                            this.ry*(this.u_1[i][j-1] + this.u_1[i][j+1]) +
-                            this.rxy2 * this.u[i][j] - this.u_2[i][j];
+                            2 * (1 - this.rx - this.ry) * this.u_1[i][j] + 
+                            this.ry*(this.u_1[i][j-1] + this.u_1[i][j+1]) - this.u_2[i][j];
+                            
                     }
                 }
             }
@@ -143,21 +153,26 @@ renderer.setSize(window.innerWidth, window.innerHeight);
 document.body.appendChild(renderer.domElement);
 
 camera = new THREE.PerspectiveCamera(40, window.innerWidth / window.innerHeight, 1, 1000);
-camera.position.set(100, 100, 100);
+camera.position.set(100/2, 100/2, 100/2);
 scene.add(camera);
+
+const loader = new THREE.TextureLoader();
+loader.load('./bg.jpg' , function(texture) {
+    scene.background = texture; 
+});
 
 const controls = new OrbitControls(camera, renderer.domElement);
 
 // scene.add( new THREE.AmbientLight(0x222222));
-const light = new THREE.PointLight(0xffffff);
-camera.add(light);
-
+// const light = new THREE.PointLight(0xffffff);
+// camera.add(light);
 // scene.add(new THREE.AxesHelper(20));
 
 const getVertices = () => {
     let vertices = [];
+    
     for (let i = 0; i < waveEquation.u.length; i++) {
-        for (let j = 0; j < waveEquation.u[i].length; j++) {
+        for (let j = 0; j < waveEquation.u[0].length; j++) {
             vertices.push(
                 new THREE.Vector3(i, waveEquation.u[i][j], j)
             )
@@ -166,24 +181,37 @@ const getVertices = () => {
     return vertices;
 }
 
-scene.add(new THREE.GridHelper(100, 100));
+const getColors = () => {
+    let colors = [];
+    
+    for (let i = 0; i < waveEquation.u.length; i++) {
+        for (let j = 0; j < waveEquation.u[0].length; j++) {
+            let colorValue = Math.abs(waveEquation.u[i][j]) / 20;
+            colors.push(
+                new THREE.Color(colorValue, (1 - colorValue)/2 , 0)
+            )
+        }
+    }
+    return colors;
+}
 
-const meshMaterial = new THREE.MeshStandardMaterial( {
-    color: 0xffaa00,
-});
-
-// const meshMaterial = new THREE.MeshBasicMaterial({color: 0xffaa00, wireframe: true});
+// [-20; 20]
+// scene.add(new THREE.GridHelper(100, 100));
 
 let vertices = getVertices();
+let colors = getColors();
 
-let meshGeometry = new ConvexBufferGeometry(vertices);
+var dotGeometry = new THREE.Geometry();
+dotGeometry.vertices = vertices;
+dotGeometry.colors = colors;
+var dotMaterial = new THREE.PointsMaterial( { size: 5, vertexColors: THREE.VertexColors } );
+var dot = new THREE.Points( dotGeometry, dotMaterial );
+scene.add( dot );
 
-const mesh1 = new THREE.Mesh(meshGeometry, meshMaterial);
-mesh1.renderOrder = 0;
-scene.add(mesh1);
+console.log(dot)
 
-mesh1.position.x = -25;
-mesh1.position.z = -25;
+dot.position.x = -25;
+dot.position.z = -25;
 
 renderer.setAnimationLoop(() => {
 	renderer.render(scene, camera);
@@ -191,5 +219,9 @@ renderer.setAnimationLoop(() => {
 
 setInterval(() => {
     waveEquation.solveAndAnimate();
-    mesh1.geometry = new ConvexBufferGeometry(getVertices());
+
+    dot.geometry = new THREE.Geometry();
+    dot.geometry.vertices = getVertices();   
+    dot.geometry.colors = getColors();
+ 
 }, 10);
